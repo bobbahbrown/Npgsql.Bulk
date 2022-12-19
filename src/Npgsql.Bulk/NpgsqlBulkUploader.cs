@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Reflection.Emit;
 using System.Threading;
 using System.Linq.Expressions;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.Bulk
 {
@@ -162,9 +163,21 @@ namespace Npgsql.Bulk
                     if (string.Equals(info?.ColumnTypeExtra, "array", StringComparison.OrdinalIgnoreCase) || info.ColumnType.StartsWith("_"))
                         return NpgsqlDbType.Array;
 
-#if DotNet6
+#if DotNet6 || DotNet7
                     // Allow postgres enum types to be mapped to CLR enums
-                    var mapper = RelationalHelper.GetNpgsqlConnection(context).TypeMapper;
+                    var connection = RelationalHelper.GetNpgsqlConnection(context);
+#if DotNet6
+                    var mapper = connection.TypeMapper;
+#else
+                    var dataSource = (NpgsqlDataSource)connection
+                        .GetType()
+                        .GetField("_dataSource", BindingFlags.Instance | BindingFlags.NonPublic)
+                        .GetValue(connection);
+                    var mapper = dataSource
+                        .GetType()
+                        .GetProperty("TypeMapper", BindingFlags.Instance | BindingFlags.NonPublic)
+                        .GetValue(dataSource);
+#endif
                     var handlers = (ConcurrentDictionary<string, Internal.TypeHandling.NpgsqlTypeHandler>)
                         mapper.GetType()
                         .GetField("_handlersByDataTypeName", BindingFlags.Instance | BindingFlags.NonPublic)

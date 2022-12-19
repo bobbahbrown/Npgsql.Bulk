@@ -48,7 +48,7 @@ namespace Npgsql.Bulk.DAL
 
         protected override object NextValue(EntityEntry entry)
         {
-            return DateTime.Now;
+            return DateTime.UtcNow;
         }
     }
 }
